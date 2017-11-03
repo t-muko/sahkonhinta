@@ -4,6 +4,8 @@ from html import unescape
 import io
 import csv
 import json
+from flask import Flask
+app = Flask(__name__)
 
 def palautaDataSarakkeesta(jsondata, sarake=0):
     sarakeArvot={}
@@ -37,13 +39,20 @@ def csvHinnat(jsondata):
 def dictToCsv(data):
     csvoutput = io.StringIO()  # CSV-file kootaan iostringiin
     fieldnames = ['date', 'hours', 'spotprice']
+
     writer = csv.DictWriter(csvoutput, fieldnames=fieldnames)
     writer.writeheader()
 
-    writer.writerow(data)
+    for row in data:
+        writer.writerow(row)
     return csvoutput.getvalue()
 
-def main(eka=0,toka=0):
+@app.route('/hello')
+def hello():
+    return 'Hello vaan\n'
+
+@app.route('/')
+def main():
     req = Request("http://www.nordpoolspot.com/api/marketdata/page/35?currency=,,,EUR")
 
     try:
@@ -51,22 +60,22 @@ def main(eka=0,toka=0):
         #with urlopen(reg) as response:
     except HTTPError as e:
         print('The server couldn\'t fulfill the request.')
-        print('Error code: ', e.code)
+        return('Error code: ', e.code)
     except URLError as e:
         print('We failed to reach a server.')
-        print('Reason: ', e.reason)
+        return('Reason: ', e.reason)
     else:
         # everything is fine
 
         jsondata=json.loads(response.read().decode())   # haetaan URLista JSON ja ladataan se dictionaryyn
 
-        print(palautaDataSarakkeesta(jsondata, 0))
-        print(dictToCsv(palautaDataSarakkeesta(jsondata, 0)))
+        return(json.dumps(palautaDataSarakkeesta(jsondata, 0)))
+        #print(dictToCsv(palautaDataSarakkeesta(jsondata, 0)))
 
-        print(csvHinnat(jsondata))
+        #return(csvHinnat(jsondata))
 
         # Haetaan datasta rivit, rivin metatieto ja sarakkeista tarvittavaa dataa
 
 if __name__ == "__main__":
-
-    main()
+    app.run()
+    #main()
