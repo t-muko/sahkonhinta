@@ -5,26 +5,42 @@ import io
 import csv
 import json
 from flask import Flask, Response
+from dateutil.parser import parse
+from dateutil.parser import parserinfo
+from datetime import date, datetime
+from pytz import timezone
+source_tz = timezone('CET')
+output_tz = timezone('Europe/Helsinki')
 
 app = Flask(__name__)
+
+
+def datetime_serial(obj):
+    """JSON serializer for objects not serializable by default json code.
+    Returning times as in Europe/Helsinki timezone"""
+
+    if isinstance(obj, (datetime, date)):
+        return obj.astimezone(output_tz).isoformat()
+    raise TypeError ("Type %s not serializable" % type(obj))
 
 def palautaDataSarakkeesta(jsondata, sarake=0):
     sarakeArvot={}
 
     for row in jsondata["data"]["Rows"]:
-        if not (row.get("IsExtraRow", True)):
+        if not (row.get("IsExtraRow", True)) and (row.get("Columns")[sarake].get("Value", "-")) != '-':
             hours = (unescape(row.get("Name", "no rows available")))
             hour = hours.split()[0]
             sarakeArvot[hour]={}
-            sarakeArvot[hour]['hours']=hours
-            sarakeArvot[hour]['date'] = (row.get("Columns")[sarake].get("CombinedName", "no name available"))
-            sarakeArvot[hour]['spotprice'] = (row.get("Columns")[sarake].get("DisplayNameOrDominatingDirection", "no value available"))
+            sarakeArvot[hour]['CET_hours']=hours
+            #Tehdään aikavyöhykekäsittely: Alkuperäiset ajat ovat CET.
+            sarakeArvot[hour]['starttime'] = source_tz.localize(parse(row.get("Columns")[sarake].get("CombinedName", "no name available")+"T"+hour,parserinfo(dayfirst=True)))
+            sarakeArvot[hour]['spotprice'] = (row.get("Columns")[sarake].get("Value", "no value available"))
     return sarakeArvot
 
 def csvHinnat(jsondata):
     hinnat = {}  # hinnat laitetaan dictionaryyn
     csvoutput = io.StringIO()  # CSV-file kootaan iostringiin
-    fieldnames = ['date', 'hours', 'spotprice']
+    fieldnames = ['starttime', 'hours', 'spotprice']
     writer = csv.DictWriter(csvoutput, fieldnames=fieldnames)
     writer.writeheader()
 
@@ -39,7 +55,7 @@ def csvHinnat(jsondata):
 
 def dictToCsv(data):
     csvoutput = io.StringIO()  # CSV-file kootaan iostringiin
-    fieldnames = ['date', 'hours', 'spotprice']
+    fieldnames = ['starttime', 'hours', 'spotprice']
 
     writer = csv.DictWriter(csvoutput, fieldnames=fieldnames)
     writer.writeheader()
@@ -71,7 +87,8 @@ def main():
         jsondata=json.loads(response.read().decode())   # haetaan URLista JSON ja ladataan se dictionaryyn
 
         return(Response(
-            json.dumps(palautaDataSarakkeesta(jsondata, 0), indent=4, sort_keys=True),
+            json.dumps(palautaDataSarakkeesta(jsondata, 0), indent=4, sort_keys=True, default=datetime_serial),
+            #json.dumps(jsondata, indent=4, sort_keys=True),
             mimetype='application/json'))
         #print(dictToCsv(palautaDataSarakkeesta(jsondata, 0)))
 
