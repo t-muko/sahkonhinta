@@ -9,6 +9,7 @@ from dateutil.parser import parse
 from dateutil.parser import parserinfo
 from datetime import date, datetime
 from pytz import timezone
+
 source_tz = timezone('CET')
 output_tz = timezone('Europe/Helsinki')
 
@@ -21,21 +22,31 @@ def datetime_serial(obj):
 
     if isinstance(obj, (datetime, date)):
         return obj.astimezone(output_tz).isoformat()
-    raise TypeError ("Type %s not serializable" % type(obj))
+    raise TypeError("Type %s not serializable" % type(obj))
+
 
 def palautaDataSarakkeesta(jsondata, sarake=0):
-    sarakeArvot={}
+    """Hakee JSON-lähdedatasta yhden päivän tiedot"""
+
+    sarakeArvot = {}
+    rivilaskuri = 1
 
     for row in jsondata["data"]["Rows"]:
         if not (row.get("IsExtraRow", True)) and (row.get("Columns")[sarake].get("Value", "-")) != '-':
             hours = (unescape(row.get("Name", "no rows available")))
             hour = hours.split()[0]
-            sarakeArvot[hour]={}
-            sarakeArvot[hour]['CET_hours']=hours
-            #Tehdään aikavyöhykekäsittely: Alkuperäiset ajat ovat CET.
-            sarakeArvot[hour]['starttime'] = source_tz.localize(parse(row.get("Columns")[sarake].get("CombinedName", "no name available")+"T"+hour,parserinfo(dayfirst=True)))
-            sarakeArvot[hour]['spotprice'] = (row.get("Columns")[sarake].get("Value", "no value available"))
+            riviId=str(rivilaskuri).zfill(2)
+            # Tehdään aikavyöhykekäsittely: Alkuperäiset ajat ovat CET.
+            sarakeArvot[riviId] = {}
+            sarakeArvot[riviId]['starttime'] = source_tz.localize(
+                parse(row.get("Columns")[sarake].get("CombinedName", "no name available") + "T" + hour,
+                      parserinfo(dayfirst=True)))
+            sarakeArvot[riviId]['CET_hours'] = hours
+            # sarakeArvot[hour]['starttime'] =
+            sarakeArvot[riviId]['spotprice'] = (row.get("Columns")[sarake].get("Value", "no value available"))
+            rivilaskuri = rivilaskuri + 1
     return sarakeArvot
+
 
 def csvHinnat(jsondata):
     hinnat = {}  # hinnat laitetaan dictionaryyn
@@ -53,6 +64,7 @@ def csvHinnat(jsondata):
             writer.writerow(hinnat)
     return csvoutput.getvalue()
 
+
 def dictToCsv(data):
     csvoutput = io.StringIO()  # CSV-file kootaan iostringiin
     fieldnames = ['starttime', 'hours', 'spotprice']
@@ -64,9 +76,11 @@ def dictToCsv(data):
         writer.writerow(row)
     return csvoutput.getvalue()
 
+
 @app.route('/hello')
 def hello():
     return 'Hello vaan ja nyt Windowsista\n'
+
 
 @app.route('/')
 def main():
@@ -74,28 +88,29 @@ def main():
 
     try:
         response = urlopen(req)
-        #with urlopen(reg) as response:
+        # with urlopen(reg) as response:
     except HTTPError as e:
         print('The server couldn\'t fulfill the request.')
-        return('Error code: ', e.code)
+        return ('Error code: ', e.code)
     except URLError as e:
         print('We failed to reach a server.')
-        return('Reason: ', e.reason)
+        return ('Reason: ', e.reason)
     else:
         # everything is fine
 
-        jsondata=json.loads(response.read().decode())   # haetaan URLista JSON ja ladataan se dictionaryyn
+        jsondata = json.loads(response.read().decode())  # haetaan URLista JSON ja ladataan se dictionaryyn
 
-        return(Response(
+        return (Response(
             json.dumps(palautaDataSarakkeesta(jsondata, 0), indent=4, sort_keys=True, default=datetime_serial),
-            #json.dumps(jsondata, indent=4, sort_keys=True),
+            # json.dumps(jsondata, indent=4, sort_keys=True),
             mimetype='application/json'))
-        #print(dictToCsv(palautaDataSarakkeesta(jsondata, 0)))
+        # print(dictToCsv(palautaDataSarakkeesta(jsondata, 0)))
 
-        #return(csvHinnat(jsondata))
+        # return(csvHinnat(jsondata))
 
         # Haetaan datasta rivit, rivin metatieto ja sarakkeista tarvittavaa dataa
 
+
 if __name__ == "__main__":
     app.run()
-    #main()
+    # main()
