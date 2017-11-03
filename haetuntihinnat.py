@@ -4,7 +4,8 @@ from html import unescape
 import io
 import csv
 import json
-from flask import Flask
+from flask import Flask, Response
+
 app = Flask(__name__)
 
 def palautaDataSarakkeesta(jsondata, sarake=0):
@@ -69,7 +70,9 @@ def main():
 
         jsondata=json.loads(response.read().decode())   # haetaan URLista JSON ja ladataan se dictionaryyn
 
-        return(json.dumps(palautaDataSarakkeesta(jsondata, 0)))
+        return(Response(
+            json.dumps(palautaDataSarakkeesta(jsondata, 0), indent=4, sort_keys=True),
+            mimetype='application/json'))
         #print(dictToCsv(palautaDataSarakkeesta(jsondata, 0)))
 
         #return(csvHinnat(jsondata))
