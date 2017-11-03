@@ -49,7 +49,7 @@ def dictToCsv(data):
 
 @app.route('/hello')
 def hello():
-    return 'Hello vaan\n'
+    return 'Hello vaan ja nyt Windowsista\n'
 
 @app.route('/')
 def main():
