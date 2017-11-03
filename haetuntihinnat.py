@@ -25,26 +25,28 @@ def datetime_serial(obj):
     raise TypeError("Type %s not serializable" % type(obj))
 
 
-def palautaDataSarakkeesta(jsondata, sarake=0):
+def palautaDataSarakkeista(jsondata, sarakkeet=(0,)):
     """Hakee JSON-lähdedatasta yhden päivän tiedot"""
 
     sarakeArvot = {}
     rivilaskuri = 1
 
-    for row in jsondata["data"]["Rows"]:
-        if not (row.get("IsExtraRow", True)) and (row.get("Columns")[sarake].get("Value", "-")) != '-':
-            hours = (unescape(row.get("Name", "no rows available")))
-            hour = hours.split()[0]
-            riviId=str(rivilaskuri).zfill(2)
-            # Tehdään aikavyöhykekäsittely: Alkuperäiset ajat ovat CET.
-            sarakeArvot[riviId] = {}
-            sarakeArvot[riviId]['starttime'] = source_tz.localize(
-                parse(row.get("Columns")[sarake].get("CombinedName", "no name available") + "T" + hour,
-                      parserinfo(dayfirst=True)))
-            sarakeArvot[riviId]['CET_hours'] = hours
-            # sarakeArvot[hour]['starttime'] =
-            sarakeArvot[riviId]['spotprice'] = (row.get("Columns")[sarake].get("Value", "no value available"))
-            rivilaskuri = rivilaskuri + 1
+    for sarake in sarakkeet:
+        for row in jsondata["data"]["Rows"]:
+            if not (row.get("IsExtraRow", True)) and (row.get("Columns")[sarake].get("Value", "-")) != '-':
+                hours = (unescape(row.get("Name", "no rows available")))
+                hour = hours.split()[0]
+                riviId=str(rivilaskuri).zfill(2)
+                # Tehdään aikavyöhykekäsittely: Alkuperäiset ajat ovat CET.
+                sarakeArvot[riviId] = {}
+                sarakeArvot[riviId]['starttime'] = source_tz.localize(
+                    parse(row.get("Columns")[sarake].get("CombinedName", "no name available") + "T" + hour,
+                          parserinfo(dayfirst=True)))
+                sarakeArvot[riviId]['CET_hours'] = hours
+                # sarakeArvot[hour]['starttime'] =
+                sarakeArvot[riviId]['spotprice'] = (row.get("Columns")[sarake].get("Value", "no value available"))
+                rivilaskuri = rivilaskuri + 1
+
     return sarakeArvot
 
 
@@ -101,7 +103,7 @@ def main():
         jsondata = json.loads(response.read().decode())  # haetaan URLista JSON ja ladataan se dictionaryyn
 
         return (Response(
-            json.dumps(palautaDataSarakkeesta(jsondata, 0), indent=4, sort_keys=True, default=datetime_serial),
+            json.dumps(palautaDataSarakkeista(jsondata, (1,0)), indent=4, sort_keys=True, default=datetime_serial),
             # json.dumps(jsondata, indent=4, sort_keys=True),
             mimetype='application/json'))
         # print(dictToCsv(palautaDataSarakkeesta(jsondata, 0)))
