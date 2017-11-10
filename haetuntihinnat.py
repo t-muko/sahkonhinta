@@ -18,7 +18,7 @@ app = Flask(__name__)
 
 def datetime_serial(obj):
     """JSON serializer for objects not serializable by default json code.
-    Returning times as in Europe/Helsinki timezone"""
+    Returning times as in 'output_tz' (Europe/Helsinki) timezone"""
 
     if isinstance(obj, (datetime, date)):
         return obj.astimezone(output_tz).isoformat()
@@ -26,7 +26,8 @@ def datetime_serial(obj):
 
 
 def palautaDataSarakkeista(jsondata, sarakkeet=(0,)):
-    """Hakee JSON-lähdedatasta yhden päivän tiedot"""
+    """ Hakee JSON-lähdedatasta haluttujen päivien tiedot.
+    Sarake 0 = viimeisin päivä eli joko kuluva tai tuleva päivä. """
 
     sarakeArvot = {}
     rivilaskuri = 1
