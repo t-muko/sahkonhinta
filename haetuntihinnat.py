@@ -36,7 +36,7 @@ def palautaDataSarakkeista(jsondata, sarakkeet=(0,)):
             if not (row.get("IsExtraRow", True)) and (row.get("Columns")[sarake].get("Value", "-")) != '-':
                 hours = (unescape(row.get("Name", "no rows available")))
                 hour = hours.split()[0]
-                riviId=str(rivilaskuri).zfill(2)
+                riviId = str(rivilaskuri).zfill(2)
                 # Tehdään aikavyöhykekäsittely: Alkuperäiset ajat ovat CET.
                 sarakeArvot[riviId] = {}
                 sarakeArvot[riviId]['starttime'] = source_tz.localize(
@@ -51,6 +51,7 @@ def palautaDataSarakkeista(jsondata, sarakkeet=(0,)):
 
 
 def csvHinnat(jsondata):
+    """EI TOIMI"""
     hinnat = {}  # hinnat laitetaan dictionaryyn
     csvoutput = io.StringIO()  # CSV-file kootaan iostringiin
     fieldnames = ['starttime', 'hours', 'spotprice']
@@ -68,6 +69,7 @@ def csvHinnat(jsondata):
 
 
 def dictToCsv(data):
+    """EI TOIMI"""
     csvoutput = io.StringIO()  # CSV-file kootaan iostringiin
     fieldnames = ['starttime', 'hours', 'spotprice']
 
@@ -79,13 +81,9 @@ def dictToCsv(data):
     return csvoutput.getvalue()
 
 
-@app.route('/hello')
-def hello():
-    return 'Hello vaan ja nyt Windowsista\n'
+def haeDataServerilta():
+    """Hakee JSON raakadatan serveriltä ja palauttaa sen dictionaryna"""
 
-
-@app.route('/')
-def main():
     req = Request("http://www.nordpoolspot.com/api/marketdata/page/35?currency=,,,EUR")
 
     try:
@@ -99,18 +97,30 @@ def main():
         return ('Reason: ', e.reason)
     else:
         # everything is fine
+        return (json.loads(response.read().decode()))  # haetaan URLista JSON ja ladataan se dictionaryyn
 
-        jsondata = json.loads(response.read().decode())  # haetaan URLista JSON ja ladataan se dictionaryyn
 
-        return (Response(
-            json.dumps(palautaDataSarakkeista(jsondata, (1,0)), indent=4, sort_keys=True, default=datetime_serial),
-            # json.dumps(jsondata, indent=4, sort_keys=True),
-            mimetype='application/json'))
-        # print(dictToCsv(palautaDataSarakkeesta(jsondata, 0)))
+@app.route('/hello')
+def hello():
+    return 'Hello vaan ja nyt Windowsista\n'
 
-        # return(csvHinnat(jsondata))
 
-        # Haetaan datasta rivit, rivin metatieto ja sarakkeista tarvittavaa dataa
+@app.route('/raakadata')
+def palautaRaakana():
+    """Palautetaan alkuperäinen JSON-data kivasti formatoituna tarkastelua varten"""
+
+    return (Response(
+        json.dumps(haeDataServerilta(), indent=4, sort_keys=True),
+        mimetype='application/json'))
+
+
+@app.route('/')
+def main():
+
+    return (Response(
+        json.dumps(palautaDataSarakkeista(haeDataServerilta(), (1, 0)),
+                   indent=4, sort_keys=True, default=datetime_serial),
+        mimetype='application/json'))
 
 
 if __name__ == "__main__":

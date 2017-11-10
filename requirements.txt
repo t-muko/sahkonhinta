@@ -2,3 +2,4 @@ Flask==0.12.2
 nose2==0.6.5
 nosy==1.2
 zappa==0.45.0
+pytz==2017.3
