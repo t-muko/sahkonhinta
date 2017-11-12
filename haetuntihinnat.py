@@ -24,6 +24,30 @@ def datetime_serial(obj):
         return obj.astimezone(output_tz).isoformat()
     raise TypeError("Type %s not serializable" % type(obj))
 
+def yhdenPalstanDatat(hours,Column):
+    """Hakee yhdestä palstasta hinnat ja päivämäärät ja yhdistää sen kellonaikaan"""
+    return ((colRow.get("CombinedName")+"T"+hours[0:2], colRow.get("Value"), hours)
+            for colRow in Column
+            if colRow.get("Value") is not "-")
+
+
+def kaikkienPalstojenDatat(jsondata):
+    """Hakee isosta taulukosta päärivit, niiden sarakearvot ja rivin kellonajan ja
+    antaa sen eteenpäin käsittelyyn"""
+    return (yhdenPalstanDatat(mrow.get("Name"), mrow['Columns'])
+            for mrow in jsondata['data']['Rows']
+            if mrow.get("IsExtraRow","Ei löydy") is False)
+
+
+def palautaHinnat(jsondata):
+    return list(sorted((
+                           parse(dateStr,parserinfo(dayfirst=True)),
+                           value,
+                           ''.join([a for a in hours if a in "0123456789-"])
+                                   )
+         for sub in kaikkienPalstojenDatat(jsondata)
+         for dateStr,value,hours in sub))
+
 
 def palautaDataSarakkeista(jsondata, sarakkeet=(0,)):
     """ Hakee JSON-lähdedatasta haluttujen päivien tiedot.
